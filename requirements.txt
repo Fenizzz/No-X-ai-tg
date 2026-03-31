@@ -1,0 +1,4 @@
+twscrape
+google-genai
+python-telegram-bot
+apscheduler
