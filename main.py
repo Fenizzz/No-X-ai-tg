@@ -41,7 +41,7 @@ async def fetch_and_send():
     for attempt in range(3):  # 最多重試 3 次
         try:
             response = client.models.generate_content(
-                model="gemini-1.5-flash",   # 改用較穩定的模型
+                model="gemini-2.5-flash",   # ← 正確的當前模型名稱
                 contents=prompt
             )
             summary_text = response.text
@@ -50,9 +50,10 @@ async def fetch_and_send():
         except Exception as e:
             error_str = str(e)
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                print(f"[{datetime.now()}] Gemini 額度用完，等待 30 秒後重試... ({attempt+1}/3)")
+                wait_time = 30
+                print(f"[{datetime.now()}] Gemini 額度用完，等待 {wait_time} 秒後重試... ({attempt+1}/3)")
                 if attempt < 2:
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(wait_time)
                     continue
                 summary_text = "❌ Gemini 今日免費額度已用完。\n\n請稍後再試，或升級 Gemini API 方案。"
             else:
