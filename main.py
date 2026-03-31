@@ -3,17 +3,21 @@ from datetime import datetime
 from google import genai
 import telegram
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import time
 
 # ====================== 變數設定 ======================
-GEMINI_API_KEY = "AIzaSyCHrDcXab742GW097ApwOx0c760t7hEBcM"
+# ←←← 請把下面這行改成你剛申請的新 Gemini API Key ←←←
+GEMINI_API_KEY = "AIzaSyAuYVg9aSf1kuEX4h_owRAwqNf-fVzZRb8"   # ←←← 改這裡！！！
+
 TELEGRAM_TOKEN = "8700350043:AAEWenpl6_MJFLwsj9KZBp-wSaW80RQKRAE"
 TELEGRAM_CHAT_ID = "761195164"
 
 print("🔍 DEBUG - Bot 啟動（Gemini 直接總結模式）")
-print(f"GEMINI_API_KEY = {'✅ 已填寫' if GEMINI_API_KEY else '❌ 空的！'}")
+print(f"GEMINI_API_KEY = {'✅ 已填寫' if GEMINI_API_KEY and GEMINI_API_KEY.startswith('AIzaSy') else '❌ 請替換成新 Key！'}")
 print(f"TELEGRAM_TOKEN = {'✅ 已填寫' if TELEGRAM_TOKEN else '❌ 空的！'}")
 print("-----------------------------------")
+
+if not GEMINI_API_KEY or not GEMINI_API_KEY.startswith('AIzaSy'):
+    raise ValueError("❌ 請把 GEMINI_API_KEY 替換成你剛申請的新 API Key！")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 scheduler = AsyncIOScheduler()
@@ -38,27 +42,22 @@ async def fetch_and_send():
 用條列式，讓人容易快速閱讀。
 """
 
-    for attempt in range(3):  # 最多重試 3 次
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",   # ← 正確的當前模型名稱
-                contents=prompt
-            )
-            summary_text = response.text
-            print(f"[{datetime.now()}] Gemini 總結完成")
-            break
-        except Exception as e:
-            error_str = str(e)
-            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                wait_time = 30
-                print(f"[{datetime.now()}] Gemini 額度用完，等待 {wait_time} 秒後重試... ({attempt+1}/3)")
-                if attempt < 2:
-                    await asyncio.sleep(wait_time)
-                    continue
-                summary_text = "❌ Gemini 今日免費額度已用完。\n\n請稍後再試，或升級 Gemini API 方案。"
-            else:
-                summary_text = f"❌ Gemini 總結失敗：{error_str}"
-            print(f"❌ Gemini 錯誤：{error_str}")
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",   # 目前推薦模型
+            contents=prompt
+        )
+        summary_text = response.text
+        print(f"[{datetime.now()}] Gemini 總結完成")
+    except Exception as e:
+        error_str = str(e)
+        if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+            summary_text = "❌ Gemini 今日免費額度已用完。\n\n請明天再試，或升級付費方案。"
+        elif "403" in error_str or "PERMISSION_DENIED" in error_str:
+            summary_text = "❌ Gemini API Key 無效或已被封鎖。\n\n請申請新的 API Key。"
+        else:
+            summary_text = f"❌ Gemini 總結失敗：{error_str[:200]}"
+        print(f"❌ Gemini 錯誤：{error_str}")
 
     # 發送到 Telegram
     try:
